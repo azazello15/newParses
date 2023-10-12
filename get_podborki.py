@@ -68,10 +68,6 @@ def get_podborki(url):
         cat_url = 'https://bask.ru' + cat_link.get('href')
         cat_name = cat_link.text
         podborki_url_list.append(cat_url)
-        cat_link_dict = {
-            'Название подборки': cat_name,
-            'URL подборки': cat_url
-        }
         for url in podborki_url_list:
             r = requests.get(url)
             s = BeautifulSoup(r.text, 'lxml')
@@ -107,6 +103,10 @@ def get_podborki(url):
                     except Exception as ex:
                         article = None
                     try:
+                        img = 'https://bask.ru' + bs.find('img', class_='object-fit-cover nicebg-rand-2').get('src')
+                    except Exception as ex:
+                        img = None
+                    try:
                         price = bs.find('span', class_='avail-b').find('span').text
                     except Exception as ex:
                         price = None
@@ -118,9 +118,14 @@ def get_podborki(url):
                         description = bs.find('div', class_='description-text').text
                     except Exception as ex:
                         description = None
+                    cat_link_dict = {
+                        'Название подборки': cat_name,
+                        'URL подборки': cat_url
+                    }
                     card_item_dict = {
                         'Название': name,
                         'Артикул': article,
+                        'Изображение': img,
                         'Цена': price,
                         'Рассрочка': credit,
                         'Полное описание': description,
@@ -134,10 +139,11 @@ def get_podborki(url):
                         'Полная информация': card_item_dict
                     }
                     data_podborki.append(items_dict)
-        count += 1
-        print(count)
-        with open('items_podborki.json', 'w', encoding='utf-8') as f:
-            json.dump(data_podborki, f, ensure_ascii=False, indent=4)
+                    print(data_podborki)
+                    count += 1
+                    print(count)
+    with open('items_podborki.json', 'w', encoding='utf-8') as f:
+        json.dump(data_podborki, f, ensure_ascii=False, indent=4)
 
 
 def main():
