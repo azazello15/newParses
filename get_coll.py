@@ -1,4 +1,5 @@
 import json
+import time
 
 import requests
 from bs4 import BeautifulSoup
@@ -57,99 +58,72 @@ headers = {
 
 
 def get_collections(url):
-    response = requests.get(url, cookies=cookies, headers=headers)
-    soup = BeautifulSoup(response.text, 'lxml')
-    collection_items = soup.find_all('a', class_='collections__item')
-    collection_url_list = []
-    names_list = []
-    data_collection = []
+    session = requests.Session()
+    response = session.get(url, headers=headers, cookies=cookies)
+    soup = BeautifulSoup(response.content, 'lxml')
+    collection_links = soup.find_all('a', class_='collections__item')
+    collection_links_list = []
+    for links in collection_links:
+        collection_links_list.append('https://bask.ru' + links.get('href'))
+        for collection_item in collection_links_list:
+            response = session.get(collection_item)
+            soup = BeautifulSoup(response.content, 'lxml')
+            item_urls = soup.find_all('a', class_='card')
+            item_urls_list = []
+            for item_url in item_urls:
+                iu = 'https://bask.ru' + item_url.get('href')
+                item_urls_list.append(iu)
 
-    count = 0
-    for col_link in collection_items:
-        collection_url = 'https://bask.ru' + col_link.get('href')
-        link_name = col_link.text
-        names_list.append(link_name)
-        link_dict = {
-            'Название коллекции': link_name,
-            'URL коллекции': collection_url,
-        }
-        collection_url_list.append(collection_url)
-        for url in collection_url_list:
-            r = requests.get(url)
-            s = BeautifulSoup(r.text, 'lxml')
-            item_links = s.find_all('a', class_='card')
-            col_link_list = []
-            for item_link in item_links:
-                try:
-                    card_link = 'https://bask.ru' + item_link.get("href")
-                    col_link_list.append(card_link)
-                except Exception as ex:
-                    card_link = None
-                try:
-                    card_name = item_link.find('div', class_='card-title').text
-                except Exception as ex:
-                    card_name = None
-                try:
-                    card_text = item_link.find('div', class_='card-text').text
-                except Exception as ex:
-                    card_text = None
-                try:
-                    card_price = item_link.find('div', class_='card-price').text
-                except Exception as ex:
-                    card_price = None
-                for u in col_link_list:
-                    res = requests.get(u)
-                    bs = BeautifulSoup(res.text, 'lxml')
-                    try:
-                        name = bs.find('div', class_='p-block__name h3').text
-                    except Exception as ex:
-                        name = None
-                    try:
-                        article = bs.find('div', class_='p-block__art').text
-                    except Exception as ex:
-                        article = None
-                    try:
-                        img = 'https://bask.ru' + bs.find('img', class_='object-fit-cover nicebg-rand-2').get('src')
-                    except Exception as ex:
-                        img = None
-                    try:
-                        price = bs.find('span', class_='avail-b').find('span').text
-                    except Exception as ex:
-                        price = None
-                    try:
-                        credit = bs.find('span', class_='avail-b').find('div', class_='credit-block').text
-                    except Exception as ex:
-                        credit = None
-                    try:
-                        description = bs.find('div', class_='description-text').text
-                    except Exception as ex:
-                        description = None
-                    card_item_dict = {
-                        'Название': name,
-                        'Артикул': article,
-                        'Изображение': img,
-                        'Цена': price,
-                        'Рассрочка': credit,
-                        'Полное описание': description,
-                    }
-                items_dict = {
-                    'Коллекция': link_dict,
-                    'Ссылка на товар': card_link,
-                    'Название товара': card_name,
-                    'Краткое описание': card_text,
-                    'Цена': card_price,
-                    'Полная информация': card_item_dict
-                }
-                data_collection.append(items_dict)
-                print(data_collection)
-                count += 1
-                print(count)
-    with open('items_collection.json', 'w', encoding='utf-8') as f:
-        json.dump(data_collection, f, ensure_ascii=False, indent=4)
+            with open('urls.txt', 'w', encoding='utf-8') as file:
+                for url in item_urls_list:
+                    file.write(f'{url}\n')
+
+
+def get_collections_data(file_path):
+    with open(file_path) as file:
+        url_list = [line.strip() for line in file.readlines()]
+
+    session = requests.Session()
+    data = []
+    for url in url_list:
+        response = session.get(url)
+        soup = BeautifulSoup(response.text, 'lxml')
+        title = soup.find('h1', class_='p-block__name sm-hidden h3').text
+        article = soup.find('span', class_='art').text
+        price = soup.find('meta', attrs={'itemprop': 'price'}).get('content')
+        credit = soup.find('div', class_='credit-block').text
+        images = soup.find_all('img', class_='object-fit-cover')
+        images_list = []
+        for i in images:
+            image = 'https://bask.ru' + i.get('src')
+            images_list.append(image)
+        description = soup.find('div', class_='description-text').text
+        try:
+            features = soup.find('ul', class_='list').find_all('li')
+            features_list = []
+            for feat in features:
+                features_list.append(feat.text)
+        except Exception as ex:
+            features_list = None
+        data.append(
+            {
+                'title': title,
+                'link': url,
+                'article': article,
+                'price': price,
+                'credit': credit,
+                'images': images_list,
+                'description': description,
+                'features': features_list
+            }
+        )
+        with open('items_collection.json', 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
 
 
 def main():
-    get_collections('https://bask.ru/')
+    # print(get_collections('https://bask.ru/'))
+    get_collections_data('urls.txt')
 
 
 if __name__ == '__main__':
