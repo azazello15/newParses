@@ -69,11 +69,11 @@ def get_collections(url):
         collection_url = 'https://bask.ru' + col_link.get('href')
         link_name = col_link.text
         names_list.append(link_name)
-        collection_url_list.append(collection_url)
         link_dict = {
             'Название коллекции': link_name,
             'URL коллекции': collection_url,
         }
+        collection_url_list.append(collection_url)
         for url in collection_url_list:
             r = requests.get(url)
             s = BeautifulSoup(r.text, 'lxml')
@@ -97,7 +97,6 @@ def get_collections(url):
                     card_price = item_link.find('div', class_='card-price').text
                 except Exception as ex:
                     card_price = None
-
                 for u in col_link_list:
                     res = requests.get(u)
                     bs = BeautifulSoup(res.text, 'lxml')
@@ -109,6 +108,10 @@ def get_collections(url):
                         article = bs.find('div', class_='p-block__art').text
                     except Exception as ex:
                         article = None
+                    try:
+                        img = 'https://bask.ru' + bs.find('img', class_='object-fit-cover nicebg-rand-2').get('src')
+                    except Exception as ex:
+                        img = None
                     try:
                         price = bs.find('span', class_='avail-b').find('span').text
                     except Exception as ex:
@@ -124,19 +127,20 @@ def get_collections(url):
                     card_item_dict = {
                         'Название': name,
                         'Артикул': article,
+                        'Изображение': img,
                         'Цена': price,
                         'Рассрочка': credit,
                         'Полное описание': description,
                     }
-                    items_dict = {
-                        'Коллекция': link_dict,
-                        'Ссылка на товар': card_link,
-                        'Название товара': card_name,
-                        'Краткое описание': card_text,
-                        'Цена': card_price,
-                        'Полная информация': card_item_dict
-                    }
-                    data_collection.append(items_dict)
+                items_dict = {
+                    'Коллекция': link_dict,
+                    'Ссылка на товар': card_link,
+                    'Название товара': card_name,
+                    'Краткое описание': card_text,
+                    'Цена': card_price,
+                    'Полная информация': card_item_dict
+                }
+                data_collection.append(items_dict)
                 print(data_collection)
                 count += 1
                 print(count)
